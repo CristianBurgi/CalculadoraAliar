@@ -1,0 +1,18 @@
+{
+  "short_name": "ALIAR",
+  "name": "Calculadora de Ingredientes ALIAR",
+  "description": "Calculadora de depósito para encargo de cocina y nutrición hospitalaria",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#042f2e",
+  "theme_color": "#0f766e",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["medical", "productivity", "food"]
+}
