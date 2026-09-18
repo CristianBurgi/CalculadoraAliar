@@ -4,9 +4,9 @@ import MenuSelector from './components/MenuSelector';
 import PortionsForm from './components/PortionsForm';
 import WarningsBanner from './components/WarningsBanner';
 import ResultsView from './components/ResultsView';
+import DespenseroView from './components/DespenseroView';
 import { calculateMenuFromDate, formatDateISO } from './utils/dateUtils';
 import { calculateAllIngredients } from './services/calculatorService';
-import { CATEGORIES } from './data/menuRepository';
 import './App.css';
 
 const DEFAULT_PORTIONS = {
@@ -17,6 +17,9 @@ const DEFAULT_PORTIONS = {
 };
 
 export default function App() {
+  // Navigation Tab State ('modulo1' | 'modulo2')
+  const [activeTab, setActiveTab] = useState('modulo1');
+
   // Date and Menu State
   const [selectedDate, setSelectedDate] = useState(() => {
     // Default to today or anchor date 2026-09-17
@@ -128,33 +131,45 @@ export default function App() {
         installPrompt={installPrompt}
         onInstallPwa={handleInstallPwa}
         isInstalled={isInstalled}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
       <main className="main-container">
-        <div className="control-panel-grid">
-          <MenuSelector
+        {activeTab === 'modulo1' ? (
+          <>
+            <div className="control-panel-grid">
+              <MenuSelector
+                selectedDate={selectedDate}
+                onDateChange={handleDateChange}
+                menuNumber={activeMenuNum}
+                onMenuOverride={handleMenuOverride}
+                isManualOverride={isManualOverride}
+                onResetToAuto={handleResetToAuto}
+                onLoadTestCase={handleLoadTestCase}
+              />
+
+              <PortionsForm
+                portionsState={portionsState}
+                onPortionChange={handlePortionChange}
+                onClearPortions={handleClearPortions}
+              />
+            </div>
+
+            <WarningsBanner menuNumber={activeMenuNum} />
+
+            <ResultsView
+              categoryResults={categoryResults}
+              menuNumber={activeMenuNum}
+            />
+          </>
+        ) : (
+          <DespenseroView
             selectedDate={selectedDate}
-            onDateChange={handleDateChange}
             menuNumber={activeMenuNum}
-            onMenuOverride={handleMenuOverride}
-            isManualOverride={isManualOverride}
-            onResetToAuto={handleResetToAuto}
-            onLoadTestCase={handleLoadTestCase}
+            categoryResults={categoryResults}
           />
-
-          <PortionsForm
-            portionsState={portionsState}
-            onPortionChange={handlePortionChange}
-            onClearPortions={handleClearPortions}
-          />
-        </div>
-
-        <WarningsBanner menuNumber={activeMenuNum} />
-
-        <ResultsView
-          categoryResults={categoryResults}
-          menuNumber={activeMenuNum}
-        />
+        )}
       </main>
     </div>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
-import { ChefHat, Smartphone, HardDriveDownload, CheckCircle2 } from 'lucide-react';
+import { ChefHat, Smartphone, HardDriveDownload, CheckCircle2, Calculator, ClipboardCheck } from 'lucide-react';
 
-export default function Header({ installPrompt, onInstallPwa, isInstalled }) {
+export default function Header({ installPrompt, onInstallPwa, isInstalled, activeTab, onTabChange }) {
   return (
     <header className="app-header">
       <div className="header-content">
@@ -14,6 +14,24 @@ export default function Header({ installPrompt, onInstallPwa, isInstalled }) {
             <span className="brand-subtitle">Depósito y Cocina Hospitalaria</span>
           </div>
         </div>
+
+        {/* Module Navigation Tabs */}
+        <nav className="header-nav-tabs">
+          <button
+            className={`nav-tab-btn ${activeTab === 'modulo1' ? 'active' : ''}`}
+            onClick={() => onTabChange('modulo1')}
+          >
+            <Calculator size={18} />
+            <span>Módulo 1: Cálculo Teórico</span>
+          </button>
+          <button
+            className={`nav-tab-btn ${activeTab === 'modulo2' ? 'active' : ''}`}
+            onClick={() => onTabChange('modulo2')}
+          >
+            <ClipboardCheck size={18} />
+            <span>Módulo 2: Registro Despensero</span>
+          </button>
+        </nav>
 
         <div className="header-badges">
           {installPrompt && !isInstalled && (
