@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aliar-pwa-v1';
+const CACHE_NAME = 'aliar-pwa-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,13 +6,18 @@ const ASSETS_TO_CACHE = [
   '/favicon.svg'
 ];
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -30,29 +35,42 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-First strategy for navigation and stale-while-revalidate for static assets
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // Network-First for HTML/Navigation
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((res) => res || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate for static assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch fresh copy in background to update cache
-        fetch(event.request).then((networkResponse) => {
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
           }
-        }).catch(() => {});
-        return cachedResponse;
-      }
+          return networkResponse;
+        })
+        .catch(() => {});
 
-      return fetch(event.request).catch(() => {
-        // Offline fallback
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
-      });
+      return cachedResponse || fetchPromise;
     })
   );
 });

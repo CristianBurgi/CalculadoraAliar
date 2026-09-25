@@ -4,7 +4,7 @@ import CategoryCard from './CategoryCard';
 import GeneralTotalTable from './GeneralTotalTable';
 import { calculateGeneralTotal } from '../services/normalizerService';
 
-export default function ResultsView({ categoryResults, menuNumber }) {
+export default function ResultsView({ categoryResults, menuNumber, portionsState }) {
   const categoriesList = Object.values(categoryResults);
   const generalTotals = calculateGeneralTotal(categoryResults);
 
@@ -38,7 +38,8 @@ export default function ResultsView({ categoryResults, menuNumber }) {
         ))}
       </div>
 
-      <GeneralTotalTable totalsList={generalTotals} />
+      <GeneralTotalTable totalsList={generalTotals} menuNumber={menuNumber} portionsState={portionsState} />
     </div>
   );
 }
+

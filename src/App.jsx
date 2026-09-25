@@ -7,6 +7,8 @@ import ResultsView from './components/ResultsView';
 import DespenseroView from './components/DespenseroView';
 import { calculateMenuFromDate, formatDateISO } from './utils/dateUtils';
 import { calculateAllIngredients } from './services/calculatorService';
+import { registerServiceWorker } from './registerServiceWorker';
+import { RefreshCw } from 'lucide-react';
 import './App.css';
 
 const DEFAULT_PORTIONS = {
@@ -22,7 +24,6 @@ export default function App() {
 
   // Date and Menu State
   const [selectedDate, setSelectedDate] = useState(() => {
-    // Default to today or anchor date 2026-09-17
     const today = new Date();
     return formatDateISO(today);
   });
@@ -32,9 +33,11 @@ export default function App() {
   // Portions State
   const [portionsState, setPortionsState] = useState(DEFAULT_PORTIONS);
 
-  // PWA Install Prompt State
+  // PWA Install Prompt & Update State
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [swRegistration, setSwRegistration] = useState(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -54,6 +57,12 @@ export default function App() {
       setIsInstalled(true);
     }
 
+    // Register Service Worker with update detection callback
+    registerServiceWorker((registration) => {
+      setSwRegistration(registration);
+      setShowUpdateBanner(true);
+    });
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
@@ -69,6 +78,14 @@ export default function App() {
         }
         setInstallPrompt(null);
       });
+    }
+  };
+
+  const handleApplyUpdate = () => {
+    if (swRegistration && swRegistration.waiting) {
+      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      window.location.reload();
     }
   };
 
@@ -135,6 +152,50 @@ export default function App() {
         onTabChange={setActiveTab}
       />
 
+      {/* SW Update Notification Banner */}
+      {showUpdateBanner && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, var(--emerald-600) 0%, var(--primary-700) 100%)',
+            color: 'white',
+            padding: '0.65rem 1rem',
+            textAlign: 'center',
+            fontSize: '0.85rem',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            boxShadow: 'var(--shadow-md)',
+            position: 'relative',
+            zIndex: 101,
+          }}
+          className="no-print animate-fade-in"
+        >
+          <span>⚡ ¡Hay una nueva versión disponible de la calculadora!</span>
+          <button
+            onClick={handleApplyUpdate}
+            style={{
+              background: 'white',
+              color: 'var(--primary-900)',
+              border: 'none',
+              padding: '0.35rem 0.75rem',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: '800',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <RefreshCw size={14} />
+            <span>Actualizar Ahora</span>
+          </button>
+        </div>
+      )}
+
       <main className="main-container">
         {activeTab === 'modulo1' ? (
           <>
@@ -161,6 +222,7 @@ export default function App() {
             <ResultsView
               categoryResults={categoryResults}
               menuNumber={activeMenuNum}
+              portionsState={portionsState}
             />
           </>
         ) : (

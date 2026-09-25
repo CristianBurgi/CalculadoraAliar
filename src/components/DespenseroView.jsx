@@ -1,487 +1,430 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Calendar, Settings, Copy, Printer, Check, AlertTriangle, Layers, Info } from 'lucide-react';
 import {
-  Search,
-  Plus,
-  Share2,
-  Copy,
-  Check,
-  RotateCcw,
-  Sun,
-  Moon,
-  Save,
-  Trash2,
-  Sparkles,
-  PackagePlus,
-  X,
-} from 'lucide-react';
-import {
-  getExpandedCatalog,
-  addIngredientToCatalog,
-  getDraftRecord,
-  saveDraftRecord,
-  buildInitialDespenseroItems,
-  buildWhatsAppMessage,
-  formatDateDisplay,
-} from '../services/despensaService.js';
-import { CATEGORIES, CATEGORY_LABELS } from '../data/menuRepository.js';
+  calculatePedidoRango,
+  getSavedAverages,
+  saveAverages,
+  getSavedFactors,
+  buildPedidoWhatsAppText,
+} from '../services/pedidoService';
+import FactoresCorreccionModal from './FactoresCorreccionModal';
 
-export default function DespenseroView({
-  selectedDate,
-  menuNumber,
-  categoryResults,
-}) {
-  // Shift selection: 'almuerzo' (Mañana) or 'cena' (Tarde)
-  const [activeShift, setActiveShift] = useState('almuerzo');
+export default function DespenseroView({ selectedDate }) {
+  // Start date ISO
+  const [startDateIso, setStartDateIso] = useState(selectedDate || '2026-09-17');
+  const [daysCount, setDaysCount] = useState(7);
 
-  // Search filter query
-  const [searchQuery, setSearchQuery] = useState('');
+  // Portion averages state (weekday & weekend)
+  const [averages, setAverages] = useState(() => getSavedAverages());
 
-  // Main Category Items map: { PERSONAL: [], REGIMEN_NORMAL: [], ... }
-  const [itemsMap, setItemsMap] = useState({
-    PERSONAL: [],
-    REGIMEN_NORMAL: [],
-    REGIMEN_DIABETICO: [],
-    REGIMEN_HEPATICO: [],
-  });
+  // Factors modal state
+  const [isFactorsModalOpen, setIsFactorsModalOpen] = useState(false);
+  const [currentFactors, setCurrentFactors] = useState(() => getSavedFactors());
 
-  // Expanded Catalog state
-  const [catalog, setCatalog] = useState(() => getExpandedCatalog());
+  // Copy notification state
+  const [copiedNotification, setCopiedNotification] = useState(false);
 
-  // Add Item Modal/Form State
-  const [addItemCategory, setAddItemCategory] = useState(null); // category key or null
-  const [catalogSearchText, setCatalogSearchText] = useState('');
-  const [selectedIngredientName, setSelectedIngredientName] = useState('');
-  const [newIngredientQty, setNewIngredientQty] = useState('');
-
-  // UI Toast / Feedback states
-  const [copySuccess, setCopySuccess] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState(null);
-
-  // Load initial or saved draft state on date/menu/shift change
+  // Sync start date if prop changes
   useEffect(() => {
-    const savedDraft = getDraftRecord(selectedDate, menuNumber, activeShift);
+    if (selectedDate) setStartDateIso(selectedDate);
+  }, [selectedDate]);
 
-    if (savedDraft && savedDraft.itemsMap) {
-      setItemsMap(savedDraft.itemsMap);
-      setLastSavedTime(savedDraft.timestamp || Date.now());
-    } else {
-      const initialMap = buildInitialDespenseroItems(categoryResults, activeShift);
-      setItemsMap(initialMap);
-      setLastSavedTime(null);
-    }
-  }, [selectedDate, menuNumber, activeShift, categoryResults]);
-
-  // Save to localStorage automatically on itemsMap change
-  const autoSave = (newItemsMap) => {
-    setItemsMap(newItemsMap);
-    const timestamp = Date.now();
-    saveDraftRecord(selectedDate, menuNumber, activeShift, {
-      itemsMap: newItemsMap,
-      timestamp,
-    });
-    setLastSavedTime(timestamp);
-  };
-
-  // Handler: Change Quantity for an Item
-  const handleQuantityChange = (categoryKey, itemId, newQty) => {
+  // Handler for portion averages edit
+  const handleAverageChange = (dayType, catKey, val) => {
+    const num = Math.max(0, parseInt(val, 10) || 0);
     const updated = {
-      ...itemsMap,
-      [categoryKey]: itemsMap[categoryKey].map((item) =>
-        item.id === itemId ? { ...item, quantityStr: newQty } : item
-      ),
+      ...averages,
+      [dayType]: {
+        ...averages[dayType],
+        [catKey]: num,
+      },
     };
-    autoSave(updated);
+    setAverages(updated);
+    saveAverages(updated);
   };
 
-  // Handler: Remove Item
-  const handleRemoveItem = (categoryKey, itemId) => {
-    const updated = {
-      ...itemsMap,
-      [categoryKey]: itemsMap[categoryKey].filter((item) => item.id !== itemId),
-    };
-    autoSave(updated);
-  };
+  // Calculate order data
+  const pedidoData = calculatePedidoRango(startDateIso, daysCount, averages, currentFactors);
 
-  // Handler: Reset Draft to Module 1 Initial Calculation
-  const handleResetDraft = () => {
-    if (
-      window.confirm(
-        '¿Restablecer el registro a los valores calculados teóricamente para este turno?'
-      )
-    ) {
-      const initialMap = buildInitialDespenseroItems(categoryResults, activeShift);
-      autoSave(initialMap);
-    }
-  };
-
-  // Handler: Add Item to Category
-  const handleAddItemSubmit = (e) => {
-    e.preventDefault();
-    if (!addItemCategory) return;
-
-    const ingName = (selectedIngredientName || catalogSearchText).trim();
-    if (!ingName) return;
-
-    // Check if ingredient should be added to expanded catalog
-    const updatedCatalog = addIngredientToCatalog(ingName);
-    setCatalog(updatedCatalog);
-
-    const newItem = {
-      id: `custom_${addItemCategory}_${Date.now()}`,
-      name: ingName,
-      quantityStr: newIngredientQty.trim() || '1',
-      calculatedQtyStr: '',
-      isCustom: true,
-    };
-
-    const updated = {
-      ...itemsMap,
-      [addItemCategory]: [...(itemsMap[addItemCategory] || []), newItem],
-    };
-
-    autoSave(updated);
-
-    // Reset Modal
-    setAddItemCategory(null);
-    setCatalogSearchText('');
-    setSelectedIngredientName('');
-    setNewIngredientQty('');
-  };
-
-  // WhatsApp Share Handler
-  const handleShareWhatsApp = () => {
-    const msg = buildWhatsAppMessage(menuNumber, activeShift, selectedDate, itemsMap);
-    const encoded = encodeURIComponent(msg);
-
-    // Try native share API on mobile browsers first
-    if (navigator.share) {
-      navigator
-        .share({
-          title: `Despensa - Menú ${menuNumber}`,
-          text: msg,
-        })
-        .catch(() => {
-          window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
-        });
-    } else {
-      window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
-    }
-  };
-
-  // Copy to Clipboard Handler
-  const handleCopyClipboard = () => {
-    const msg = buildWhatsAppMessage(menuNumber, activeShift, selectedDate, itemsMap);
-    navigator.clipboard.writeText(msg).then(() => {
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2500);
+  const handleCopyWhatsApp = () => {
+    const text = buildPedidoWhatsAppText(pedidoData);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedNotification(true);
+      setTimeout(() => setCopiedNotification(false), 3000);
     });
   };
 
-  // Filter Catalog Suggestions
-  const catalogSuggestions = useMemo(() => {
-    if (!catalogSearchText.trim()) return catalog.slice(0, 8);
-    const query = catalogSearchText.toLowerCase();
-    return catalog.filter((item) => item.toLowerCase().includes(query)).slice(0, 10);
-  }, [catalogSearchText, catalog]);
+  const handlePrint = () => {
+    window.print();
+  };
 
-  // Filtered Category Items based on search bar
-  const filteredCategoryItems = useMemo(() => {
-    if (!searchQuery.trim()) return itemsMap;
-    const q = searchQuery.toLowerCase().trim();
-
-    const filtered = {};
-    Object.keys(itemsMap).forEach((catKey) => {
-      filtered[catKey] = (itemsMap[catKey] || []).filter((item) =>
-        item.name.toLowerCase().includes(q)
-      );
-    });
-    return filtered;
-  }, [searchQuery, itemsMap]);
+  const specialDaysCount = pedidoData.rangeDays.filter((d) => d.isSpecialDay).length;
+  const weekdaysCount = pedidoData.daysCount - specialDaysCount;
 
   return (
-    <div className="despensero-container">
-      {/* Header & Controls Panel */}
+    <div className="despensero-container animate-fade-in">
+      {/* Modales */}
+      <FactoresCorreccionModal
+        isOpen={isFactorsModalOpen}
+        onClose={() => setIsFactorsModalOpen(false)}
+        onFactorsUpdated={(newFactors) => setCurrentFactors(newFactors)}
+      />
+
+      {/* Card Header & Global Controls */}
       <div className="despensero-header-card">
         <div className="despensero-top-bar">
           <div>
             <div className="despensero-badge-tag">
-              <Save size={14} /> Módulo 2 — Depósito & Despensa
+              <ShoppingCart size={13} />
+              <span>Módulo 2 — Proveedores</span>
             </div>
-            <h2 className="despensero-title">Registro Real del Despensero</h2>
+            <h2 className="despensero-title">
+              Pedido de Compra Consolidadas (Verdura/Fruta y Carnes)
+            </h2>
             <p className="despensero-subtitle">
-              Menú {menuNumber} • Fecha: {formatDateDisplay(selectedDate)}
+              Cálculo acumulado en peso bruto con factores de corrección y calendario de feriados nacionales.
             </p>
           </div>
 
-          {/* Shift Selection Switcher */}
-          <div className="shift-toggle-group">
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
-              className={`shift-toggle-btn ${activeShift === 'almuerzo' ? 'active' : ''}`}
-              onClick={() => setActiveShift('almuerzo')}
+              className="btn-action btn-secondary no-print"
+              onClick={() => setIsFactorsModalOpen(true)}
             >
-              <Sun size={16} />
-              <span>Almuerzo (Mañana)</span>
+              <Settings size={16} />
+              <span>Factores de Corrección</span>
             </button>
+
             <button
-              className={`shift-toggle-btn ${activeShift === 'cena' ? 'active' : ''}`}
-              onClick={() => setActiveShift('cena')}
+              className="btn-action btn-whatsapp no-print"
+              onClick={handleCopyWhatsApp}
             >
-              <Moon size={16} />
-              <span>Cena (Tarde)</span>
+              {copiedNotification ? <Check size={16} /> : <Copy size={16} />}
+              <span>{copiedNotification ? '¡Copiado!' : 'Copiar para WhatsApp'}</span>
+            </button>
+
+            <button className="btn-action btn-secondary no-print" onClick={handlePrint}>
+              <Printer size={16} />
+              <span>Imprimir</span>
             </button>
           </div>
         </div>
 
-        {/* Quick Search & Actions Toolbar */}
-        <div className="despensero-toolbar">
-          <div className="quick-search-box">
-            <Search size={18} className="search-icon" />
+        {/* Panel de Controles de Rango & Fechas */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', background: 'var(--slate-50)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: 'var(--slate-700)', marginBottom: '0.35rem' }}>
+              📅 Fecha Inicio del Pedido:
+            </label>
             <input
-              type="text"
-              placeholder="Buscar ingrediente en la lista..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="quick-search-input"
+              type="date"
+              value={startDateIso}
+              onChange={(e) => setStartDateIso(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--slate-300)', fontSize: '0.88rem', fontWeight: '600' }}
             />
-            {searchQuery && (
-              <button
-                className="search-clear-btn"
-                onClick={() => setSearchQuery('')}
-                title="Limpiar búsqueda"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
 
-          <div className="action-buttons-group">
-            <button
-              className="btn-action btn-whatsapp"
-              onClick={handleShareWhatsApp}
-              title="Compartir por WhatsApp"
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: 'var(--slate-700)', marginBottom: '0.35rem' }}>
+              ⏱️ Días a Calcular (Rango Futuro):
+            </label>
+            <select
+              value={daysCount}
+              onChange={(e) => setDaysCount(Number(e.target.value))}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--slate-300)', fontSize: '0.88rem', fontWeight: '700' }}
             >
-              <Share2 size={16} />
-              <span>Compartir por WhatsApp</span>
-            </button>
+              <option value={3}>Próximos 3 días</option>
+              <option value={5}>Próximos 5 días</option>
+              <option value={7}>Próximos 7 días (1 semana)</option>
+              <option value={10}>Próximos 10 días (1 ciclo)</option>
+              <option value={14}>Próximos 14 días (2 semanas)</option>
+              <option value={30}>Próximos 30 días (1 mes)</option>
+            </select>
+          </div>
 
-            <button
-              className="btn-action btn-secondary"
-              onClick={handleCopyClipboard}
-              title="Copiar texto al portapapeles"
-            >
-              {copySuccess ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
-              <span>{copySuccess ? '¡Copiado!' : 'Copiar Texto'}</span>
-            </button>
-
-            <button
-              className="btn-action btn-outline-danger"
-              onClick={handleResetDraft}
-              title="Restablecer a valores calculados"
-            >
-              <RotateCcw size={15} />
-              <span>Restablecer</span>
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', fontSize: '0.8rem', color: 'var(--slate-600)' }}>
+            <div>Dias hábiles (semana): <strong>{weekdaysCount} días</strong></div>
+            <div>Fin de semana / feriados: <strong>{specialDaysCount} días</strong></div>
           </div>
         </div>
 
-        {/* Auto-save status feedback */}
-        <div className="autosave-status-bar">
-          <span className="status-indicator-dot"></span>
-          <span>
-            {lastSavedTime
-              ? `Autoguardado en este dispositivo (${new Date(lastSavedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
-              : 'Cambios listos para autoguardar en este dispositivo'}
-          </span>
+        {/* Tabla Editable de Promedios de Raciones */}
+        <div style={{ borderTop: '1px dashed var(--slate-200)', paddingTop: '1rem' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--slate-800)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Layers size={16} color="var(--primary-700)" />
+            <span>Promedios de raciones por categoría (Editables por el usuario):</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+            {/* Días de semana */}
+            <div style={{ background: 'white', padding: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--primary-800)', marginBottom: '0.5rem' }}>
+                📆 Día de semana (Lun a Vie)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>Personal</label>
+                  <input
+                    type="number"
+                    value={averages.weekday.PERSONAL}
+                    onChange={(e) => handleAverageChange('weekday', 'PERSONAL', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Normal</label>
+                  <input
+                    type="number"
+                    value={averages.weekday.REGIMEN_NORMAL}
+                    onChange={(e) => handleAverageChange('weekday', 'REGIMEN_NORMAL', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Diabético</label>
+                  <input
+                    type="number"
+                    value={averages.weekday.REGIMEN_DIABETICO}
+                    onChange={(e) => handleAverageChange('weekday', 'REGIMEN_DIABETICO', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Hepático</label>
+                  <input
+                    type="number"
+                    value={averages.weekday.REGIMEN_HEPATICO}
+                    onChange={(e) => handleAverageChange('weekday', 'REGIMEN_HEPATICO', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sáb / Dom / Feriados */}
+            <div style={{ background: '#fffbeb', padding: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid #fef3c7' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', color: '#b45309', marginBottom: '0.5rem' }}>
+                🎉 Sábado / Domingo / Feriado
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>Personal</label>
+                  <input
+                    type="number"
+                    value={averages.weekend.PERSONAL}
+                    onChange={(e) => handleAverageChange('weekend', 'PERSONAL', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Normal</label>
+                  <input
+                    type="number"
+                    value={averages.weekend.REGIMEN_NORMAL}
+                    onChange={(e) => handleAverageChange('weekend', 'REGIMEN_NORMAL', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Diabético</label>
+                  <input
+                    type="number"
+                    value={averages.weekend.REGIMEN_DIABETICO}
+                    onChange={(e) => handleAverageChange('weekend', 'REGIMEN_DIABETICO', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Hepático</label>
+                  <input
+                    type="number"
+                    value={averages.weekend.REGIMEN_HEPATICO}
+                    onChange={(e) => handleAverageChange('weekend', 'REGIMEN_HEPATICO', e.target.value)}
+                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Category Cards Grid */}
-      <div className="despensero-categories-grid">
-        {Object.keys(CATEGORIES).map((catKey) => {
-          const catLabel = CATEGORY_LABELS[catKey];
-          const items = filteredCategoryItems[catKey] || [];
-          const totalItemsCount = (itemsMap[catKey] || []).length;
+      {/* Listados de Pedidos de Proveedores */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+        
+        {/* 1. Verdura y Fruta */}
+        <div className="general-total-card" style={{ marginTop: 0 }}>
+          <h3 style={{ fontSize: '1.15rem', color: 'var(--emerald-800)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <span>🥬 Pedido de Verdura y Fruta</span>
+            <span style={{ fontSize: '0.75rem', background: 'var(--emerald-100)', color: 'var(--emerald-700)', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+              {pedidoData.verduraYFrutaList.length} ítems
+            </span>
+          </h3>
 
-          return (
-            <div key={catKey} className="despensero-category-card">
-              <div className="despensero-category-header">
-                <div>
-                  <h3 className="despensero-category-title">{catLabel}</h3>
-                  <span className="category-count-badge">
-                    {totalItemsCount} {totalItemsCount === 1 ? 'ingrediente' : 'ingredientes'}
-                  </span>
-                </div>
-
-                <button
-                  className="btn-add-ingredient"
-                  onClick={() => {
-                    setAddItemCategory(catKey);
-                    setCatalogSearchText('');
-                    setSelectedIngredientName('');
-                    setNewIngredientQty('');
-                  }}
-                  title="Agregar ingrediente o postre"
-                >
-                  <Plus size={16} />
-                  <span>Agregar extra</span>
-                </button>
-              </div>
-
-              <div className="despensero-category-body">
-                {items.length === 0 ? (
-                  <div className="empty-category-notice">
-                    {searchQuery
-                      ? 'No hay ingredientes coincidiendo con la búsqueda'
-                      : 'No hay ingredientes registrados para este turno en esta categoría'}
-                  </div>
-                ) : (
-                  <div className="despensero-items-list">
-                    {items.map((item) => (
-                      <div key={item.id} className="despensero-item-row">
-                        <div className="despensero-item-info">
-                          <span className="despensero-item-name">{item.name}</span>
-                          {item.isCustom && (
-                            <span className="badge-custom-extra" title="Agregado a mano / Postre">
-                              <Sparkles size={11} /> Extra
-                            </span>
-                          )}
-                          {item.calculatedQtyStr && item.calculatedQtyStr !== item.quantityStr && (
-                            <span className="badge-edited" title={`Teórico: ${item.calculatedQtyStr}`}>
-                              Modificado
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="despensero-item-actions">
-                          <input
-                            type="text"
-                            value={item.quantityStr}
-                            onChange={(e) =>
-                              handleQuantityChange(catKey, item.id, e.target.value)
-                            }
-                            placeholder="Cant. real"
-                            className="despensero-qty-input"
-                          />
-
-                          <button
-                            className="btn-remove-item"
-                            onClick={() => handleRemoveItem(catKey, item.id)}
-                            title="Eliminar de la lista"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+          <div className="total-table-container">
+            <table className="total-table">
+              <thead>
+                <tr>
+                  <th>Ingrediente</th>
+                  <th style={{ textAlign: 'right' }}>Peso Bruto (Pedido)</th>
+                  <th style={{ textAlign: 'center' }}>Factor</th>
+                  <th style={{ textAlign: 'right' }}>Neto equiv.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pedidoData.verduraYFrutaList.map((item, idx) => (
+                  <tr key={idx}>
+                    <td style={{ fontWeight: '700', color: 'var(--slate-900)' }}>
+                      {item.name}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span className="total-qty-badge" style={{ backgroundColor: 'var(--emerald-100)', color: 'var(--emerald-900)', fontSize: '0.95rem' }}>
+                        {item.grossQuantityStr}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--slate-500)' }}>
+                      × {item.factor}
+                    </td>
+                    <td style={{ textAlign: 'right', fontSize: '0.8rem', color: 'var(--slate-500)' }}>
+                      {item.netQuantityStr}
+                    </td>
+                  </tr>
+                ))}
+                {pedidoData.verduraYFrutaList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--slate-400)' }}>
+                      No hay ingredientes de verdura/fruta en este rango.
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </div>
-          );
-        })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 2. Carne, Pollo y Cerdo */}
+        <div className="general-total-card" style={{ marginTop: 0 }}>
+          <h3 style={{ fontSize: '1.15rem', color: 'var(--red-800, #991b1b)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <span>🥩 Pedido de Carne, Pollo y Cerdo</span>
+            <span style={{ fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+              {pedidoData.carnePolloCerdoList.length} ítems
+            </span>
+          </h3>
+
+          <div className="total-table-container">
+            <table className="total-table">
+              <thead>
+                <tr>
+                  <th>Ingrediente</th>
+                  <th style={{ textAlign: 'right' }}>Peso Bruto (Pedido)</th>
+                  <th style={{ textAlign: 'center' }}>Factor</th>
+                  <th style={{ textAlign: 'right' }}>Neto equiv.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pedidoData.carnePolloCerdoList.map((item, idx) => (
+                  <tr key={idx}>
+                    <td style={{ fontWeight: '700', color: 'var(--slate-900)' }}>
+                      {item.name}
+                      {item.isWholeChicken && (
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--amber-700)', fontWeight: 'normal' }}>
+                          (Presa entera: sin factor)
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span className="total-qty-badge" style={{ backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.95rem' }}>
+                        {item.grossQuantityStr}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--slate-500)' }}>
+                      {item.isWholeChicken ? '1.0 (s/f)' : `× ${item.factor}`}
+                    </td>
+                    <td style={{ textAlign: 'right', fontSize: '0.8rem', color: 'var(--slate-500)' }}>
+                      {item.netQuantityStr}
+                    </td>
+                  </tr>
+                ))}
+                {pedidoData.carnePolloCerdoList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--slate-400)' }}>
+                      No hay ingredientes de carne/pollo/cerdo en este rango.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
-      {/* Add Extra Ingredient Modal / Dialog */}
-      {addItemCategory && (
-        <div className="modal-backdrop" onClick={() => setAddItemCategory(null)}>
-          <div
-            className="modal-content-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div className="modal-title-box">
-                <PackagePlus size={20} className="modal-icon" />
-                <div>
-                  <h3 className="modal-title">Agregar ingrediente / postre</h3>
-                  <span className="modal-subtitle">
-                    {CATEGORY_LABELS[addItemCategory]}
-                  </span>
-                </div>
-              </div>
-              <button
-                className="modal-close-btn"
-                onClick={() => setAddItemCategory(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {/* Ingredientes Sin Clasificar (si existen) */}
+      {pedidoData.unclassifiedList.length > 0 && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', padding: '1rem', borderRadius: 'var(--radius-md)', marginTop: '1.5rem' }}>
+          <h4 style={{ margin: 0, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
+            <AlertTriangle size={18} />
+            <span>Ingredientes sin clasificar (Almacén / Lácteos / Huevos)</span>
+          </h4>
+          <p style={{ fontSize: '0.8rem', color: '#b45309', margin: '0.25rem 0 0.75rem 0' }}>
+            Estos ingredientes tienen cantidades calculadas pero no están categorizados ni como verdura ni como carne.
+          </p>
 
-            <form onSubmit={handleAddItemSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Buscar o escribir ingrediente</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Zanahoria, Gelatina, Queso..."
-                  value={catalogSearchText}
-                  onChange={(e) => {
-                    setCatalogSearchText(e.target.value);
-                    setSelectedIngredientName(e.target.value);
-                  }}
-                  className="form-control"
-                  autoFocus
-                  required
-                />
-
-                {/* Catalog Suggestions List */}
-                <div className="catalog-suggestions-box">
-                  {catalogSuggestions.map((catItem) => (
-                    <button
-                      key={catItem}
-                      type="button"
-                      className={`catalog-chip ${
-                        selectedIngredientName.toLowerCase() === catItem.toLowerCase()
-                          ? 'selected'
-                          : ''
-                      }`}
-                      onClick={() => {
-                        setSelectedIngredientName(catItem);
-                        setCatalogSearchText(catItem);
-                      }}
-                    >
-                      {catItem}
-                    </button>
-                  ))}
-                </div>
-
-                {catalogSearchText.trim() &&
-                  !catalog.some(
-                    (c) => c.toLowerCase() === catalogSearchText.trim().toLowerCase()
-                  ) && (
-                    <div className="new-catalog-notice">
-                      <Sparkles size={14} /> Se agregará &quot;
-                      {catalogSearchText.trim()}&quot; al catálogo local para futuras búsquedas.
-                    </div>
-                  )}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Cantidad real entregada</label>
-                <input
-                  type="text"
-                  placeholder="Ej. 15 kg, 40, 2 U..."
-                  value={newIngredientQty}
-                  onChange={(e) => setNewIngredientQty(e.target.value)}
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn-action btn-secondary"
-                  onClick={() => setAddItemCategory(null)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-action btn-primary">
-                  <Plus size={16} /> Agregar al Registro
-                </button>
-              </div>
-            </form>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {pedidoData.unclassifiedList.map((item, idx) => (
+              <span key={idx} style={{ background: 'white', border: '1px solid #fef3c7', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontWeight: '600', color: '#78350f' }}>
+                {item.name}: <strong>{item.grossQuantityStr}</strong>
+              </span>
+            ))}
           </div>
         </div>
       )}
+
+      {/* Desglose de Días del Rango */}
+      <div className="general-total-card" style={{ marginTop: '2rem' }}>
+        <h3 style={{ fontSize: '1.05rem', color: 'var(--slate-800)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+          <Calendar size={18} color="var(--primary-700)" />
+          <span>Detalle del Ciclo de Menús en el Rango Calculado</span>
+        </h3>
+
+        <div className="total-table-container">
+          <table className="total-table">
+            <thead>
+              <tr>
+                <th>Día & Fecha</th>
+                <th>Menú Asignado</th>
+                <th>Tipo de Día</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pedidoData.rangeDays.map((d, idx) => (
+                <tr key={idx}>
+                  <td style={{ fontWeight: '600', color: 'var(--slate-900)' }}>
+                    {d.label}
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>
+                      Menú {d.menuNum}
+                    </span>
+                  </td>
+                  <td>
+                    {d.isSpecialDay ? (
+                      <span style={{ fontSize: '0.75rem', background: '#fef3c7', color: '#b45309', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>
+                        🎉 Sábado / Domingo / Feriado
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', background: 'var(--slate-100)', color: 'var(--slate-700)', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '600' }}>
+                        📆 Día de Semana
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }

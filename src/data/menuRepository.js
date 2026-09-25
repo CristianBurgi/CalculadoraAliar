@@ -101,3 +101,58 @@ export function getPolloTagInfo(categoryKey, menuNum, shiftKey, subseccionName) 
 export function getInferidoPolloTags() {
   return polloTagsData.filter((tag) => tag.confianza === 'inferido - revisar');
 }
+
+/**
+ * Returns a sorted unique array of all known ingredient names in menus.json
+ * plus common aliases (useful for search autocomplete when adding manual ingredients).
+ */
+export function getAllKnownIngredientNames() {
+  const namesSet = new Set();
+
+  // Add alias map names
+  const ALIASES = [
+    'Acelga', 'Aceite', 'Aceituna', 'Ajo', 'Apio', 'Arroz', 'Arveja', 'Arvejas',
+    'Berenjena', 'Berenjenas', 'Carne', 'Carne molida', 'Carne molida 1ª calidad',
+    'Carne molida de 1ª calidad', 'Cebolla', 'Cebolla (fugazzeta)', 'Cebolla verde',
+    'Cerdo', 'Chaucha', 'Coreanito', 'Coreano', 'Disco', 'Fideo', 'Fideos', 'Filet de pollo',
+    'Harina', 'Huevo', 'Huevo duro', 'Jamón', 'Leche', 'Lechuga', 'Levadura', 'Limón',
+    'Manteca', 'Margarina', 'Masa', 'Mayonesa', 'Molida de 1ª calidad', 'Pan', 'Pan rallado',
+    'Papa', 'Papas al horno', 'Perejil', 'Pimiento', 'Pollo', 'Pollo al horno',
+    'Pollo desmenuzado', 'Puré de papa', 'Queso', 'Queso cremoso', 'Queso cuartirolo',
+    'Queso de rallar', 'Remolacha', 'Remolacha rallada', 'Rodaja de tomate', 'Tomate',
+    'Tomate triturado', 'Trigo burgol', 'Verdeo', 'Zanahoria', 'Zanahoria rallada',
+    'Zapallito', 'Zapallitos', 'Zapallito verde', 'Zapallo'
+  ];
+
+  ALIASES.forEach((n) => namesSet.add(n));
+
+  // Extract from menusData
+  Object.keys(menusData).forEach((catKey) => {
+    const catObj = menusData[catKey];
+    if (!catObj) return;
+
+    Object.keys(catObj).forEach((menuNum) => {
+      const menuObj = catObj[menuNum];
+      if (!menuObj) return;
+
+      ['almuerzo', 'cena'].forEach((shiftKey) => {
+        const shiftData = menuObj[shiftKey];
+        if (!shiftData) return;
+
+        const subs = Array.isArray(shiftData) ? shiftData : (shiftData.subs || []);
+        subs.forEach(([subName, ingList]) => {
+          if (Array.isArray(ingList)) {
+            ingList.forEach(([ingName]) => {
+              if (ingName && typeof ingName === 'string') {
+                namesSet.add(ingName.trim());
+              }
+            });
+          }
+        });
+      });
+    });
+  });
+
+  return Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
