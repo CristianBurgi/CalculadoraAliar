@@ -10,7 +10,7 @@ export const INGREDIENT_CATEGORIES = {
     'Zapallito', 'Zapallo'
   ],
   CARNE_POLLO_CERDO: [
-    'Carne', 'Carne molida', 'Cerdo', 'Filet de pollo', 'Pollo', 'Pollo desmenuzado'
+    'Carne', 'Cerdo', 'Filet de pollo', 'Pollo entero'
   ]
 };
 
@@ -26,9 +26,11 @@ export const ALIAS_MAP = {
   'Zapallito verde': 'Zapallito',
   'Papas al horno': 'Papa',
   'Rodaja de tomate': 'Tomate',
-  'Carne molida 1ª calidad': 'Carne molida',
-  'Carne molida de 1ª calidad': 'Carne molida',
-  'Molida de 1ª calidad': 'Carne molida'
+  'Carne molida': 'Carne',
+  'Carne molida 1ª calidad': 'Carne',
+  'Carne molida de 1ª calidad': 'Carne',
+  'Molida de 1ª calidad': 'Carne',
+  'Pollo desmenuzado': 'Filet de pollo'
 };
 
 // Section 8.4: Tabla inicial de factores de corrección (neto -> bruto)
@@ -39,7 +41,6 @@ export const DEFAULT_FACTORS = {
   'Arveja': 1.0,
   'Berenjena': 1.2,
   'Cebolla': 1.15,
-  'Cebolla (fugazzeta)': 1.15,
   'Cebolla verde': 1.3,
   'Chaucha': 1.15,
   'Coreanito': 1.3,
@@ -49,19 +50,15 @@ export const DEFAULT_FACTORS = {
   'Perejil': 1.3,
   'Pimiento': 1.25,
   'Remolacha': 1.3,
-  'Remolacha rallada': 1.3,
   'Tomate': 1.1,
   'Verdeo': 1.3,
   'Zanahoria': 1.2,
-  'Zanahoria rallada': 1.2,
   'Zapallito': 1.1,
   'Zapallo': 1.4,
   'Carne': 1.15,
-  'Carne molida': 1.0,
   'Cerdo': 1.15,
   'Filet de pollo': 1.05,
-  'Pollo': 1.05,
-  'Pollo desmenuzado': 1.05
+  'Pollo entero': 1.0
 };
 
 // Promedios iniciales por defecto (por turno/categoría)
@@ -88,7 +85,16 @@ const STORAGE_AVERAGES_KEY = 'aliar_promedios_raciones';
  */
 export function getMappedIngredientName(rawName) {
   const trimmed = (rawName || '').trim();
-  return ALIAS_MAP[trimmed] || trimmed;
+  if (ALIAS_MAP[trimmed]) return ALIAS_MAP[trimmed];
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('carne molida') || lower.includes('molida de 1ª') || lower.includes('molida 1ª')) {
+    return 'Carne';
+  }
+  if (lower.includes('pollo desmenuzado') || lower.includes('filet de pollo')) {
+    return 'Filet de pollo';
+  }
+  return trimmed;
 }
 
 /**
@@ -197,7 +203,15 @@ export function calculatePedidoRango(startDateIso, daysCount, customAverages = n
 
         shiftData.subsections.forEach((sub) => {
           sub.items.forEach((item) => {
-            const mappedName = getMappedIngredientName(item.name);
+            let mappedName = getMappedIngredientName(item.name);
+            let isWholeChicken = item.conversionType === 'pollo_entera';
+
+            if (isWholeChicken) {
+              mappedName = 'Pollo entero';
+            } else if (mappedName.toLowerCase() === 'pollo') {
+              mappedName = 'Filet de pollo';
+            }
+
             const key = mappedName.toLowerCase();
 
             if (!netAggregatedMap.has(key)) {
@@ -207,12 +221,12 @@ export function calculatePedidoRango(startDateIso, daysCount, customAverages = n
                 totalNetGrams: 0,
                 totalUnits: 0,
                 unitType: item.unitLabel,
-                isWholeChicken: item.conversionType === 'pollo_entera',
+                isWholeChicken,
               });
             }
 
             const entry = netAggregatedMap.get(key);
-            if (item.conversionType === 'pollo_entera') {
+            if (isWholeChicken) {
               entry.isWholeChicken = true;
               entry.totalUnits += item.totalQuantity;
               entry.unitType = 'pollos enteros';

@@ -12,47 +12,14 @@ export function getNormalizedIngredientKey(rawName) {
     return { key: 'pollo_entero', displayName: 'Pollo entero', groupType: 'unit', unit: 'pollos enteros' };
   }
 
-  // Filet de pollo
-  if (lower.includes('filet de pollo')) {
+  // Filet de pollo & Pollo desmenuzado
+  if (lower.includes('filet de pollo') || lower.includes('pollo desmenuzado')) {
     return { key: 'filet_pollo', displayName: 'Filet de pollo', groupType: 'gram' };
-  }
-
-  // Egg grouping (Huevo, Huevo duro, Huevo para ligar)
-  if (lower.includes('huevo')) {
-    return { key: 'huevo_total', displayName: 'Huevo / Huevo duro', groupType: 'egg_unit', unit: 'huevos' };
-  }
-
-  // Distinct Tomato variants
-  if (lower === 'tomate triturado') {
-    return { key: 'tomate_triturado', displayName: 'Tomate triturado', groupType: 'gram' };
-  }
-  if (lower.includes('rodaja de tomate')) {
-    return { key: 'rodaja_tomate', displayName: 'Rodaja de tomate', groupType: 'gram' };
-  }
-
-  // Zanahoria normalization (Zanahoria, Zanahoria rallada)
-  if (lower.startsWith('zanahoria')) {
-    return { key: 'zanahoria_base', displayName: 'Zanahoria', groupType: 'gram' };
-  }
-
-  // Remolacha normalization (Remolacha, Remolacha rallada)
-  if (lower.startsWith('remolacha')) {
-    return { key: 'remolacha_base', displayName: 'Remolacha', groupType: 'gram' };
-  }
-
-  // Cebolla normalization (Cebolla, Cebolla (fugazzeta))
-  if (lower.startsWith('cebolla') && !lower.includes('verde')) {
-    return { key: 'cebolla_base', displayName: 'Cebolla', groupType: 'gram' };
-  }
-
-  // Zapallito normalization (Zapallito, Zapallitos, Zapallito verde)
-  if (lower.startsWith('zapallito')) {
-    return { key: 'zapallito_base', displayName: 'Zapallito', groupType: 'gram' };
   }
 
   // Carne normalization (Carne, Carne molida, Molida 1ª calidad, etc.)
   if (lower === 'carne' || lower.includes('carne molida') || lower.includes('molida de 1ª') || lower.includes('molida 1ª')) {
-    return { key: 'carne_base', displayName: 'Carne (horno/molida)', groupType: 'gram' };
+    return { key: 'carne_base', displayName: 'Carne', groupType: 'gram' };
   }
 
   // Aceituna
