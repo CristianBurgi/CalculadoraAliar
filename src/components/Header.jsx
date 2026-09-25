@@ -29,7 +29,7 @@ export default function Header({ installPrompt, onInstallPwa, isInstalled, activ
             onClick={() => onTabChange('modulo2')}
           >
             <ClipboardCheck size={18} />
-            <span>Módulo 2: Registro Despensero</span>
+            <span>Módulo 2: Pedidos Mercaderías</span>
           </button>
         </nav>
 

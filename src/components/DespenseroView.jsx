@@ -76,10 +76,10 @@ export default function DespenseroView({ selectedDate }) {
           <div>
             <div className="despensero-badge-tag">
               <ShoppingCart size={13} />
-              <span>Módulo 2 — Proveedores</span>
+              <span>Módulo 2 — Pedidos Mercaderías</span>
             </div>
             <h2 className="despensero-title">
-              Pedido de Compra Consolidadas (Verdura/Fruta y Carnes)
+              Pedido de Compra Consolidado (Verdura/Fruta y Carnes)
             </h2>
             <p className="despensero-subtitle">
               Cálculo acumulado en peso bruto con factores de corrección y calendario de feriados nacionales.
@@ -111,7 +111,7 @@ export default function DespenseroView({ selectedDate }) {
         </div>
 
         {/* Panel de Controles de Rango & Fechas */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', background: 'var(--slate-50)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'var(--slate-50)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: 'var(--slate-700)', marginBottom: '0.35rem' }}>
               📅 Fecha Inicio del Pedido:
@@ -155,7 +155,7 @@ export default function DespenseroView({ selectedDate }) {
             <span>Promedios de raciones por categoría (Editables por el usuario):</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
             {/* Días de semana */}
             <div style={{ background: 'white', padding: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
               <div style={{ fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--primary-800)', marginBottom: '0.5rem' }}>
@@ -250,7 +250,7 @@ export default function DespenseroView({ selectedDate }) {
       </div>
 
       {/* Listados de Pedidos de Proveedores */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
         
         {/* 1. Verdura y Fruta */}
         <div className="general-total-card" style={{ marginTop: 0 }}>
