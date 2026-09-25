@@ -4,10 +4,10 @@ import { getDateRangeInfo } from '../utils/dateUtils.js';
 // Section 8.2: Categorización de ingredientes
 export const INGREDIENT_CATEGORIES = {
   VERDURA_Y_FRUTA: [
-    'Acelga', 'Ajo', 'Apio', 'Arveja', 'Berenjena', 'Cebolla', 'Cebolla (fugazzeta)',
+    'Acelga', 'Ajo', 'Apio', 'Arveja', 'Berenjena', 'Cebolla',
     'Cebolla verde', 'Chaucha', 'Coreanito', 'Lechuga', 'Limón', 'Papa', 'Perejil',
-    'Pimiento', 'Remolacha', 'Remolacha rallada', 'Tomate', 'Verdeo', 'Zanahoria',
-    'Zanahoria rallada', 'Zapallito', 'Zapallo'
+    'Pimiento', 'Remolacha', 'Tomate', 'Verdeo', 'Zanahoria',
+    'Zapallito', 'Zapallo'
   ],
   CARNE_POLLO_CERDO: [
     'Carne', 'Carne molida', 'Cerdo', 'Filet de pollo', 'Pollo', 'Pollo desmenuzado'
@@ -18,7 +18,10 @@ export const INGREDIENT_CATEGORIES = {
 export const ALIAS_MAP = {
   'Arvejas': 'Arveja',
   'Berenjenas': 'Berenjena',
+  'Cebolla (fugazzeta)': 'Cebolla',
   'Coreano': 'Coreanito',
+  'Remolacha rallada': 'Remolacha',
+  'Zanahoria rallada': 'Zanahoria',
   'Zapallitos': 'Zapallito',
   'Zapallito verde': 'Zapallito',
   'Papas al horno': 'Papa',

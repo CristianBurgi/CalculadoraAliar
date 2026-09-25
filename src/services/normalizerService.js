@@ -32,12 +32,17 @@ export function getNormalizedIngredientKey(rawName) {
 
   // Zanahoria normalization (Zanahoria, Zanahoria rallada)
   if (lower.startsWith('zanahoria')) {
-    return { key: 'zanahoria_base', displayName: 'Zanahoria (inc. rallada)', groupType: 'gram' };
+    return { key: 'zanahoria_base', displayName: 'Zanahoria', groupType: 'gram' };
   }
 
   // Remolacha normalization (Remolacha, Remolacha rallada)
   if (lower.startsWith('remolacha')) {
-    return { key: 'remolacha_base', displayName: 'Remolacha (inc. rallada)', groupType: 'gram' };
+    return { key: 'remolacha_base', displayName: 'Remolacha', groupType: 'gram' };
+  }
+
+  // Cebolla normalization (Cebolla, Cebolla (fugazzeta))
+  if (lower.startsWith('cebolla') && !lower.includes('verde')) {
+    return { key: 'cebolla_base', displayName: 'Cebolla', groupType: 'gram' };
   }
 
   // Zapallito normalization (Zapallito, Zapallitos, Zapallito verde)
@@ -61,6 +66,7 @@ export function getNormalizedIngredientKey(rawName) {
     .trim();
 
   return { key: cleaned.toLowerCase(), displayName: cleaned, groupType: 'gram' };
+
 }
 
 /**
