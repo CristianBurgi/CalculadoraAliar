@@ -29,14 +29,25 @@ export default function DespenseroView({ selectedDate }) {
     if (selectedDate) setStartDateIso(selectedDate);
   }, [selectedDate]);
 
+  // Categories list for portion averages table
+  const AVERAGE_CATEGORIES = [
+    { key: 'PERSONAL', label: 'Personal Autorizado' },
+    { key: 'REGIMEN_NORMAL', label: 'Régimen Normal' },
+    { key: 'REGIMEN_DIABETICO', label: 'Régimen Diabético' },
+    { key: 'REGIMEN_HEPATICO', label: 'Régimen Hepático' },
+  ];
+
   // Handler for portion averages edit
-  const handleAverageChange = (dayType, catKey, val) => {
+  const handleAverageChange = (dayType, catKey, shiftKey, val) => {
     const num = Math.max(0, parseInt(val, 10) || 0);
     const updated = {
       ...averages,
       [dayType]: {
         ...averages[dayType],
-        [catKey]: num,
+        [catKey]: {
+          ...(averages[dayType]?.[catKey] || {}),
+          [shiftKey]: num,
+        },
       },
     };
     setAverages(updated);
@@ -152,99 +163,64 @@ export default function DespenseroView({ selectedDate }) {
         <div style={{ borderTop: '1px dashed var(--slate-200)', paddingTop: '1rem' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--slate-800)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Layers size={16} color="var(--primary-700)" />
-            <span>Promedios de raciones por categoría (Editables por el usuario):</span>
+            <span>Promedios de raciones por categoría, turno y tipo de día (Editables):</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
-            {/* Días de semana */}
-            <div style={{ background: 'white', padding: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--primary-800)', marginBottom: '0.5rem' }}>
-                📆 Día de semana (Lun a Vie)
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>Personal</label>
-                  <input
-                    type="number"
-                    value={averages.weekday.PERSONAL}
-                    onChange={(e) => handleAverageChange('weekday', 'PERSONAL', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Normal</label>
-                  <input
-                    type="number"
-                    value={averages.weekday.REGIMEN_NORMAL}
-                    onChange={(e) => handleAverageChange('weekday', 'REGIMEN_NORMAL', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Diabético</label>
-                  <input
-                    type="number"
-                    value={averages.weekday.REGIMEN_DIABETICO}
-                    onChange={(e) => handleAverageChange('weekday', 'REGIMEN_DIABETICO', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Hepático</label>
-                  <input
-                    type="number"
-                    value={averages.weekday.REGIMEN_HEPATICO}
-                    onChange={(e) => handleAverageChange('weekday', 'REGIMEN_HEPATICO', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Sáb / Dom / Feriados */}
-            <div style={{ background: '#fffbeb', padding: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid #fef3c7' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', color: '#b45309', marginBottom: '0.5rem' }}>
-                🎉 Sábado / Domingo / Feriado
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>Personal</label>
-                  <input
-                    type="number"
-                    value={averages.weekend.PERSONAL}
-                    onChange={(e) => handleAverageChange('weekend', 'PERSONAL', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Normal</label>
-                  <input
-                    type="number"
-                    value={averages.weekend.REGIMEN_NORMAL}
-                    onChange={(e) => handleAverageChange('weekend', 'REGIMEN_NORMAL', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Diabético</label>
-                  <input
-                    type="number"
-                    value={averages.weekend.REGIMEN_DIABETICO}
-                    onChange={(e) => handleAverageChange('weekend', 'REGIMEN_DIABETICO', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--slate-600)' }}>R. Hepático</label>
-                  <input
-                    type="number"
-                    value={averages.weekend.REGIMEN_HEPATICO}
-                    onChange={(e) => handleAverageChange('weekend', 'REGIMEN_HEPATICO', e.target.value)}
-                    style={{ width: '100%', padding: '0.3rem', fontSize: '0.85rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
-                  />
-                </div>
-              </div>
-            </div>
+          <div className="total-table-container" style={{ overflowX: 'auto' }}>
+            <table className="total-table" style={{ minWidth: '600px' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left' }}>Categoría</th>
+                  <th style={{ textAlign: 'center', background: '#f1f5f9' }}>☀️ Almuerzo semana</th>
+                  <th style={{ textAlign: 'center', background: '#f1f5f9' }}>🌙 Cena semana</th>
+                  <th style={{ textAlign: 'center', background: '#fef3c7' }}>☀️ Almuerzo finde/feriado</th>
+                  <th style={{ textAlign: 'center', background: '#fef3c7' }}>🌙 Cena finde/feriado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {AVERAGE_CATEGORIES.map(({ key, label }) => (
+                  <tr key={key}>
+                    <td style={{ fontWeight: '700', color: 'var(--slate-900)' }}>{label}</td>
+                    <td style={{ textAlign: 'center', background: '#f8fafc' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={averages.weekday?.[key]?.almuerzo ?? 0}
+                        onChange={(e) => handleAverageChange('weekday', key, 'almuerzo', e.target.value)}
+                        style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'center', background: '#f8fafc' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={averages.weekday?.[key]?.cena ?? 0}
+                        onChange={(e) => handleAverageChange('weekday', key, 'cena', e.target.value)}
+                        style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'center', background: '#fffbeb' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={averages.weekend?.[key]?.almuerzo ?? 0}
+                        onChange={(e) => handleAverageChange('weekend', key, 'almuerzo', e.target.value)}
+                        style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'center', background: '#fffbeb' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={averages.weekend?.[key]?.cena ?? 0}
+                        onChange={(e) => handleAverageChange('weekend', key, 'cena', e.target.value)}
+                        style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

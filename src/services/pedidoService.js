@@ -64,16 +64,16 @@ export const DEFAULT_FACTORS = {
 // Promedios iniciales por defecto (por turno/categoría)
 export const DEFAULT_PORTION_AVERAGES = {
   weekday: {
-    PERSONAL: 150,
-    REGIMEN_NORMAL: 180,
-    REGIMEN_DIABETICO: 45,
-    REGIMEN_HEPATICO: 45
+    PERSONAL: { almuerzo: 150, cena: 150 },
+    REGIMEN_NORMAL: { almuerzo: 180, cena: 180 },
+    REGIMEN_DIABETICO: { almuerzo: 45, cena: 45 },
+    REGIMEN_HEPATICO: { almuerzo: 45, cena: 45 }
   },
   weekend: {
-    PERSONAL: 80,
-    REGIMEN_NORMAL: 130,
-    REGIMEN_DIABETICO: 35,
-    REGIMEN_HEPATICO: 35
+    PERSONAL: { almuerzo: 80, cena: 80 },
+    REGIMEN_NORMAL: { almuerzo: 130, cena: 130 },
+    REGIMEN_DIABETICO: { almuerzo: 35, cena: 35 },
+    REGIMEN_HEPATICO: { almuerzo: 35, cena: 35 }
   }
 };
 
@@ -139,19 +139,75 @@ export function resetFactorsToDefault() {
 }
 
 /**
- * Reads saved averages from localStorage or fallback to defaults
+ * Normalizes and migrates old portion averages (single number per category/dayType)
+ * to new format (almuerzo and cena per category/dayType).
+ */
+export function normalizeAndMigrateAverages(stored) {
+  if (!stored || typeof stored !== 'object') return JSON.parse(JSON.stringify(DEFAULT_PORTION_AVERAGES));
+
+  let isOldFormat = false;
+
+  ['weekday', 'weekend'].forEach((dt) => {
+    if (stored[dt] && typeof stored[dt] === 'object') {
+      Object.keys(stored[dt]).forEach((cat) => {
+        if (typeof stored[dt][cat] === 'number') {
+          isOldFormat = true;
+        }
+      });
+    }
+  });
+
+  const categories = ['PERSONAL', 'REGIMEN_NORMAL', 'REGIMEN_DIABETICO', 'REGIMEN_HEPATICO'];
+  const dayTypes = ['weekday', 'weekend'];
+
+  const result = {
+    weekday: {},
+    weekend: {}
+  };
+
+  dayTypes.forEach((dt) => {
+    categories.forEach((cat) => {
+      const defaultCat = DEFAULT_PORTION_AVERAGES[dt][cat];
+      const storedCat = stored[dt]?.[cat];
+
+      if (typeof storedCat === 'number') {
+        result[dt][cat] = {
+          almuerzo: storedCat,
+          cena: storedCat
+        };
+      } else if (storedCat && typeof storedCat === 'object') {
+        result[dt][cat] = {
+          almuerzo: typeof storedCat.almuerzo === 'number' ? storedCat.almuerzo : defaultCat.almuerzo,
+          cena: typeof storedCat.cena === 'number' ? storedCat.cena : defaultCat.cena,
+        };
+      } else {
+        result[dt][cat] = { ...defaultCat };
+      }
+    });
+  });
+
+  if (isOldFormat) {
+    saveAverages(result);
+  }
+
+  return result;
+}
+
+/**
+ * Reads saved averages from localStorage or fallback to defaults (with migration support)
  */
 export function getSavedAverages() {
-  if (typeof localStorage === 'undefined') return { ...DEFAULT_PORTION_AVERAGES };
+  if (typeof localStorage === 'undefined') return normalizeAndMigrateAverages(null);
   try {
     const stored = localStorage.getItem(STORAGE_AVERAGES_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      return normalizeAndMigrateAverages(parsed);
     }
   } catch (err) {
     console.warn('Error reading portion averages from localStorage:', err);
   }
-  return { ...DEFAULT_PORTION_AVERAGES };
+  return normalizeAndMigrateAverages(null);
 }
 
 /**
@@ -170,19 +226,31 @@ export function saveAverages(averages) {
  * Helper to build portion state object for a single day from average raciones.
  */
 function buildPortionsForDay(categoryAverages) {
+  const getCatObj = (catKey) => {
+    const catVal = categoryAverages?.[catKey];
+    if (typeof catVal === 'number') {
+      return { almuerzo: catVal, cena: catVal };
+    }
+    return {
+      almuerzo: typeof catVal?.almuerzo === 'number' ? catVal.almuerzo : 0,
+      cena: typeof catVal?.cena === 'number' ? catVal.cena : 0,
+    };
+  };
+
   return {
-    PERSONAL: { almuerzo: categoryAverages.PERSONAL || 0, cena: categoryAverages.PERSONAL || 0 },
-    REGIMEN_NORMAL: { almuerzo: categoryAverages.REGIMEN_NORMAL || 0, cena: categoryAverages.REGIMEN_NORMAL || 0 },
-    REGIMEN_DIABETICO: { almuerzo: categoryAverages.REGIMEN_DIABETICO || 0, cena: categoryAverages.REGIMEN_DIABETICO || 0 },
-    REGIMEN_HEPATICO: { almuerzo: categoryAverages.REGIMEN_HEPATICO || 0, cena: categoryAverages.REGIMEN_HEPATICO || 0 },
+    PERSONAL: getCatObj('PERSONAL'),
+    REGIMEN_NORMAL: getCatObj('REGIMEN_NORMAL'),
+    REGIMEN_DIABETICO: getCatObj('REGIMEN_DIABETICO'),
+    REGIMEN_HEPATICO: getCatObj('REGIMEN_HEPATICO'),
   };
 }
 
 /**
  * Main calculation function for Module 2 Supplier Order (Pedido de Compra).
+ * Receives portion averages table as parameter.
  */
 export function calculatePedidoRango(startDateIso, daysCount, customAverages = null, customFactors = null) {
-  const averages = customAverages || getSavedAverages();
+  const averages = customAverages ? normalizeAndMigrateAverages(customAverages) : getSavedAverages();
   const factors = customFactors || getSavedFactors();
 
   const rangeDays = getDateRangeInfo(startDateIso, daysCount);
