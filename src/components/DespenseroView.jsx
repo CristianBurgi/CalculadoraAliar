@@ -37,16 +37,23 @@ export default function DespenseroView({ selectedDate }) {
     { key: 'REGIMEN_HEPATICO', label: 'Régimen Hepático' },
   ];
 
+  // Helper to format input value so 0 displays as empty string with placeholder="0"
+  const formatInputValue = (val) => {
+    if (val === 0 || val === '0' || val === undefined || val === null) return '';
+    return val;
+  };
+
   // Handler for portion averages edit
-  const handleAverageChange = (dayType, catKey, shiftKey, val) => {
-    const num = Math.max(0, parseInt(val, 10) || 0);
+  const handleAverageChange = (dayType, catKey, shiftKey, rawValue) => {
+    const sanitized = (rawValue || '').replace(/\D/g, '');
+    const num = sanitized === '' ? 0 : parseInt(sanitized, 10);
     const updated = {
       ...averages,
       [dayType]: {
         ...averages[dayType],
         [catKey]: {
           ...(averages[dayType]?.[catKey] || {}),
-          [shiftKey]: num,
+          [shiftKey]: Math.max(0, num),
         },
       },
     };
@@ -185,8 +192,10 @@ export default function DespenseroView({ selectedDate }) {
                       <input
                         type="number"
                         min="0"
-                        value={averages.weekday?.[key]?.almuerzo ?? 0}
+                        placeholder="0"
+                        value={formatInputValue(averages.weekday?.[key]?.almuerzo)}
                         onChange={(e) => handleAverageChange('weekday', key, 'almuerzo', e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
                       />
                     </td>
@@ -194,8 +203,10 @@ export default function DespenseroView({ selectedDate }) {
                       <input
                         type="number"
                         min="0"
-                        value={averages.weekday?.[key]?.cena ?? 0}
+                        placeholder="0"
+                        value={formatInputValue(averages.weekday?.[key]?.cena)}
                         onChange={(e) => handleAverageChange('weekday', key, 'cena', e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid var(--slate-300)', borderRadius: '4px' }}
                       />
                     </td>
@@ -203,8 +214,10 @@ export default function DespenseroView({ selectedDate }) {
                       <input
                         type="number"
                         min="0"
-                        value={averages.weekend?.[key]?.almuerzo ?? 0}
+                        placeholder="0"
+                        value={formatInputValue(averages.weekend?.[key]?.almuerzo)}
                         onChange={(e) => handleAverageChange('weekend', key, 'almuerzo', e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
                       />
                     </td>
@@ -212,8 +225,10 @@ export default function DespenseroView({ selectedDate }) {
                       <input
                         type="number"
                         min="0"
-                        value={averages.weekend?.[key]?.cena ?? 0}
+                        placeholder="0"
+                        value={formatInputValue(averages.weekend?.[key]?.cena)}
                         onChange={(e) => handleAverageChange('weekend', key, 'cena', e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         style={{ width: '80px', padding: '0.3rem', fontSize: '0.88rem', fontWeight: '700', textAlign: 'center', border: '1px solid #fcd34d', borderRadius: '4px', background: 'white' }}
                       />
                     </td>
